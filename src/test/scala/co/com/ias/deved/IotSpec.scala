@@ -30,4 +30,23 @@ class IotSpec(_system: ActorSystem)
     response.value should ===(None)
   }
 
+  "Device updates last state" in {
+    val probe = TestProbe()
+
+    val device = _system.actorOf(Device.props())
+
+    device.tell(RecordTemperature(1, 1.5), probe.ref)
+
+    val response1 = probe.expectMsgType[TemperatureRecorded]
+
+    response1.id should ===(1)
+
+    device.tell(RequestLastTemperature(2), probe.ref)
+
+    val response2 = probe.expectMsgType[RespondTemperature]
+
+    response2.value should ===(Some(1.5))
+    response2.id should ===(2)
+  }
+
 }

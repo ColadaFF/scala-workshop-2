@@ -1,16 +1,15 @@
 package co.com.ias.deved
 
-import java.util.{Calendar, Date, UUID}
+import java.util.{ Calendar, Date, UUID }
 
 import co.com.ias.deved.common.Amount
 
-import scala.util.{Success, Try}
+import scala.util.{ Success, Try }
 
 object common {
   type Amount = BigDecimal
 
   def today: Date = Calendar.getInstance.getTime
-
 
 }
 
@@ -18,8 +17,12 @@ case class Balance(amount: Amount = 0) {
 
 }
 
-
 //case class Account(no: UUID, balance: Balance = Balance())
+
+trait Currency
+case object EUR extends Currency
+case object COP extends Currency
+case object USD extends Currency
 
 trait Account {
   def no: UUID
@@ -27,9 +30,29 @@ trait Account {
   def balance: Balance
 }
 
+trait InterestAccount extends Account {
+  def interestRate: BigDecimal
+  def currency: Currency
+}
+
+case class CreditCard(
+  no: UUID,
+  balance: Balance,
+  interestRate: BigDecimal = 0,
+  currency: Currency) extends InterestAccount
+
+case class HouseLoan(
+  no: UUID,
+  balance: Balance,
+  interestRate: BigDecimal = 0,
+  currency: Currency,
+  openDate: Date) extends InterestAccount
+
 case class SavingsAccount(no: UUID, balance: Balance, openDate: Date = common.today, closeDate: Option[Date] = None) extends Account
 
 case class CheckingAccount(no: UUID, balance: Balance, openDate: Date = common.today, closeDate: Option[Date] = None) extends Account
+
+// new account type
 
 object Account {
   def createSavingsAccount(no: UUID, initialBalance: Balance): SavingsAccount = {
@@ -49,8 +72,18 @@ object Account {
 
 object AccountServices {
   def calculateRateAccount(): BigDecimal = ???
-}
 
+  def getBalance(a: Account): Balance = {
+    a match {
+      case a: SavingsAccount => a.balance
+      case checking: CheckingAccount => checking.balance
+      case creditCard: CreditCard => {
+        Balance(creditCard.balance.amount * creditCard.interestRate)
+      }
+      case _ => throw new IllegalArgumentException
+    }
+  }
+}
 
 trait Repository[A, IdType] {
   def query(id: IdType): Try[A]
@@ -77,8 +110,3 @@ trait InMemoryAccountRepository extends AccountRepository {
   }
 }
 
-
-object System extends App {
-  val balance = Balance
-  val account = Account(UUID.randomUUID(), Balance(12))
-}
